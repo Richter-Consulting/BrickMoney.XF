@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using BrickMoney.DB;
 using BrickMoney.Helpers;
@@ -17,6 +18,8 @@ using NLog.Targets;
 using Prism;
 using Prism.Ioc;
 using SQLitePCL;
+using WD.Logging;
+using WD.Logging.Abstractions;
 using Xamarin.CommunityToolkit.Helpers;
 using Xamarin.Essentials.Implementation;
 using Xamarin.Essentials.Interfaces;
@@ -26,7 +29,7 @@ namespace BrickMoney
 {
     public partial class App
     {
-        private ILogger _logger = null;
+        private ILogger<App> _logger = null;
 
         public App() : this(null) { }
 
@@ -37,24 +40,37 @@ namespace BrickMoney
             Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(Secrets.SyncfusionLicense);
             InitializeComponent();
 
-            InitLogger();
+            try
+            {
+                InitLogger();
 
-            InitLocalization();
+                InitLocalization();
 
-            // InitDatabase();
+                InitDatabase();
 
-            var navigationResult = await NavigationService.NavigateAsync($"{nameof(NavigationPage)}/{nameof(MainPage)}");
+                var navigationResult = await NavigationService.NavigateAsync($"{nameof(NavigationPage)}/{nameof(MainPage)}");
+
+                if (!navigationResult.Success)
+                {
+                    _logger?.Fatal(navigationResult.Exception, "Failed to navigate to main page");
+                }
+            } catch (Exception ex)
+            {
+                _logger?.Fatal(ex, "Failed to start app");
+                throw;
+            }
         }
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
             // Xamarin Essentials
+            containerRegistry.RegisterSingleton<IMainThread, MainThreadImplementation>();
             containerRegistry.RegisterSingleton<IFileSystem, FileSystemImplementation>();
             containerRegistry.RegisterSingleton<IPreferences, PreferencesImplementation>();
             containerRegistry.RegisterSingleton<ISecureStorage, SecureStorageImplementation>();
 
             // Register app services
-            containerRegistry.Register<ILogger>(t => LogManager.GetCurrentClassLogger());
+            containerRegistry.RegisterSingleton(typeof(ILogger<>), typeof(NLogLoggerAdapter<>));
             containerRegistry.RegisterScoped<IAppNavigationService, AppNavigationService>();
             containerRegistry.RegisterSingleton<IAppSettings, AppSettingsService>();
 
@@ -79,12 +95,16 @@ namespace BrickMoney
                     Directory.CreateDirectory(dbPath);
                 }
                 var dbFileName = Path.Combine(dbPath, "brick_money.db");
-                var con = new SqliteConnectionStringBuilder();
-                con.DataSource = dbFileName;
+                var con = new SqliteConnectionStringBuilder
+                {
+                    DataSource = dbFileName
+                };
                 return new DbContextOptionsBuilder<BrickMoneyDB>()
                     .UseSqlite(con.ConnectionString).Options;
             });
             containerRegistry.Register<BrickMoneyDB>();
+            containerRegistry.Register<IApiService, AppApiService>();
+            containerRegistry.Register<IDataService, AppDataService>();
         }
 
         private void InitLocalization()
@@ -99,6 +119,8 @@ namespace BrickMoney
                     AppLocalization.Culture = userCulture;
                     Thread.CurrentThread.CurrentCulture = userCulture;
                     Thread.CurrentThread.CurrentUICulture = userCulture;
+
+                    _logger?.Debug("App language set to {0}", userCulture.Name);
                 }
                 LocalizationResourceManager.Current.Init(AppLocalization.ResourceManager);
             } catch (Exception ex)
@@ -138,7 +160,7 @@ namespace BrickMoney
                 // Configure rule
                 var fileRule =
 #if DEBUG
-                new NLog.Config.LoggingRule("*", LogLevel.Debug, fileTarget);
+                new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, fileTarget);
 #else
             new NLog.Config.LoggingRule("*", LogLevel.Warn, fileTarget);
 #endif
@@ -148,13 +170,13 @@ namespace BrickMoney
 #if DEBUG
                 var debugTarget = new DebuggerTarget("DebugLog");
                 configuration.AddTarget(debugTarget);
-                var debugRule = new NLog.Config.LoggingRule("*", LogLevel.Debug, debugTarget);
+                var debugRule = new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, debugTarget);
                 configuration.LoggingRules.Add(debugRule);
 #endif
 
                 // Set configuration
                 LogManager.Configuration = configuration;
-                _logger = LogManager.GetCurrentClassLogger();
+                _logger = Container.Resolve<ILogger<App>>();
             } catch(Exception ex)
             {
                 Debug.WriteLine("Logger initialization failed" + Environment.NewLine + ex);
@@ -168,7 +190,12 @@ namespace BrickMoney
                 Batteries_V2.Init();
                 using (var db = Container.Resolve<BrickMoneyDB>())
                 {
+                    var migrations = db.Database.GetPendingMigrations();
                     db.Database.Migrate();
+                    if (migrations.Any())
+                    {
+                        _logger?.Debug("Database migrated to version {0}", string.Join(", ", migrations));
+                    }
                 }
             }
             catch (Exception ex)

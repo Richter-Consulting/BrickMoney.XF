@@ -1,0 +1,1 @@
+dotnet ef migrations remove -s src/tools/BrickMoney.MigrationHelper -p src/app/BrickMoney

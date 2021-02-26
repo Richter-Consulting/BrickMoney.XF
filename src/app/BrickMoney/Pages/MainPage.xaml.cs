@@ -1,6 +1,4 @@
-﻿using Xamarin.Forms;
-
-namespace BrickMoney.Pages
+﻿namespace BrickMoney.Pages
 {
     public partial class MainPage
     {

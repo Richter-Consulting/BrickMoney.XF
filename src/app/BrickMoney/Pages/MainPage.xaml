@@ -2,25 +2,24 @@
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:xct="http://xamarin.com/schemas/2020/toolkit"
+             xmlns:sfl="clr-namespace:Syncfusion.ListView.XForms;assembly=Syncfusion.SfListView.XForms"
+             xmlns:sfb="clr-namespace:Syncfusion.SfBusyIndicator.XForms;assembly=Syncfusion.SfBusyIndicator.XForms"
+             xmlns:vm="clr-namespace:BrickMoney.ViewModels"
+             xmlns:models="clr-namespace:BrickMoney.Models.Data"
              x:Class="BrickMoney.Pages.MainPage"
-             Title="{xct:Translate AppName}">
+             Title="{xct:Translate AppName}"
+             x:DataType="vm:MainViewModel">
+    <ContentPage.Resources>
+        <DataTemplate x:Key="UserDataItemTemplate" x:DataType="models:SimpleUserSet">
+            <Label Text="{Binding Name}" Padding="8,16" FontSize="Large" LineBreakMode="TailTruncation" />
+        </DataTemplate>
+    </ContentPage.Resources>
+    <Grid>
+        <sfl:SfListView ItemsSource="{Binding UserDataList}" ItemTemplate="{StaticResource UserDataItemTemplate}" AutoFitMode="Height" TapCommand="{Binding SetSelectedCommand}">
+        </sfl:SfListView>
 
-    <StackLayout>
-        <Frame BackgroundColor="#2196F3" Padding="24" CornerRadius="0">
-            <Label Text="Welcome to Xamarin.Forms!" HorizontalTextAlignment="Center" TextColor="White" FontSize="36"/>
-        </Frame>
-        <Label Text="Start developing now" FontSize="Title" Padding="30,10,30,10"/>
-        <Label Text="Make changes to your XAML file and save to see your UI update in the running app with XAML Hot Reload. Give it a try!" FontSize="16" Padding="30,0,30,0"/>
-        <Label FontSize="16" Padding="30,24,30,0">
-            <Label.FormattedText>
-                <FormattedString>
-                    <FormattedString.Spans>
-                        <Span Text="Learn more at "/>
-                        <Span Text="https://aka.ms/xamarin-quickstart" FontAttributes="Bold"/>
-                    </FormattedString.Spans>
-                </FormattedString>
-            </Label.FormattedText>
-        </Label>
-    </StackLayout>
+        <!-- Working Overlay -->
+        <sfb:SfBusyIndicator IsBusy="{Binding IsLoading}" IsVisible="{Binding IsLoading}" BackgroundColor="#66000000" ViewBoxWidth="150" ViewBoxHeight="150"/>
+    </Grid>
 
 </ContentPage>

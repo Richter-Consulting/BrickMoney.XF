@@ -6,6 +6,7 @@
     - iOS
 - Web-Service
 - Tools
+    - Migration Helper
 
 ## Required
 

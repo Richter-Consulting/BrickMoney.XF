@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace BrickMoney.DB.Models
 {
@@ -17,5 +19,21 @@ namespace BrickMoney.DB.Models
         public DateTime SaleDate { get; set; }
         public string SoldOver { get; set; }
         public string Buyer { get; set; }
+
+        public LegoSetUserInfo(int state, bool isSelected, int legoSetId, double purchasingPrice, string seller,
+            DateTime purchaseDate, double retailPrice, DateTime saleDate, string soldOver, string buyer)
+        {
+            State = state;
+            IsSelected = isSelected;
+            LegoSetId = legoSetId;
+            PurchasingPrice = purchasingPrice;
+            Seller = seller;
+            PurchaseDate = purchaseDate;
+            RetailPrice = retailPrice;
+            SaleDate = saleDate;
+            SoldOver = soldOver;
+            Buyer = buyer;
+
+        }
     }
 }
